@@ -3,3 +3,15 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# Generated IDE and operating-system files
+.idea/
+**/.DS_Store
+__MACOSX/
+*.user
+*.suo
+
+# Local environment and secrets
+.env
+.env.*
+**/appsettings.Local.json
