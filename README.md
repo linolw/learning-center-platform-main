@@ -14,6 +14,7 @@
 | --- | --- |
 | **[Guía PC2 paso a paso](docs/pc2-guia-paso-a-paso.md)** | Interpretación del enunciado, Rider, Shared, DDD, persistencia, REST, errores, MySQL, pruebas y commits |
 | **[Arquitectura completa de referencia](docs/pc2-arquitectura-referencia.md)** | Árbol de archivos y fragmentos adaptables por capas para un POST de Shipment |
+| **[Shipping integrado en Acme](docs/pc2-shipping-integrado.md)** | Código real por capas dentro de `Acme.Center.Platform`, pasos para crear la migración y probar POST/MySQL |
 | **[Guía original extensa](docs/study-guide.md)** | Estudiar los patrones y conceptos presentes en la referencia |
 | **[ADR de referencia](docs/adrs.md)** | Decisiones arquitectónicas del proyecto original |
 
@@ -145,7 +146,7 @@ Realiza `dotnet build` entre etapas. Los commits representan avances verificable
 
 ## 8. Estado de la adaptación y limitaciones
 
-Esta rama corrige archivos importados que no son código fuente, quita una implementación obsoleta duplicada de excepción, protege las configuraciones de contraseña y agrega documentación práctica. **La aplicación de ejemplo sigue siendo Learning Center**; los fragmentos de PC2 en `docs/` son plantillas didácticas, **no** una API nueva compilada y desplegada. Es obligatorio adaptar y verificar su código en cada enunciado.
+Esta rama corrige archivos importados que no son código fuente, quita una implementación obsoleta duplicada de excepción, protege las configuraciones de contraseña y agrega documentación práctica. **La rama `feature/pc2-shipping-reference` incluye además el código real del bounded context `Shipping` bajo `Acme.Center.Platform`.** Todavía requiere compilación, migración y verificación manual en Rider/MySQL; no lo consideres ejecutado ni verificado hasta completar esos pasos. Los fragmentos de `docs/` son ejemplos de estudio. Es obligatorio adaptar y verificar su código en cada enunciado.
 
 ---
 
