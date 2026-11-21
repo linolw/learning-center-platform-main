@@ -1,153 +1,154 @@
-# Learning Center Platform — guía práctica PC2
+# GUÍA DEFINITIVA PC2 — Aplicaciones Web
 
-**Autor de esta guía y adaptación académica:** Leonardo Lino  
-**Repositorio base:** proyecto Learning Center utilizado como referencia de arquitectura en el curso Aplicaciones Web.  
-**Stack de la referencia:** .NET 10, C# 14, ASP.NET Core, Entity Framework Core, MySQL, Cortex.Mediator y OpenAPI/Scalar.
+**Leonardo Lino** · C# 14 · .NET 10 · ASP.NET Core · Rider · DDD + CQRS · EF Core + MySQL
 
-> **Objetivo:** utilizar el código real del profesor como referencia para aprender a resolver enunciados nuevos de PC2. No es una solución universal que se copie sin adaptar: el enunciado siempre determina nombres, reglas, contrato HTTP, almacenamiento y alcance.
->
-> **Integridad académica:** los enunciados de referencia permiten sugerencias de *Code Completion* de JetBrains Rider, pero prohíben usar agentes de IA para generar código durante la evaluación. Este material está preparado para estudio y simulacros fuera de la evaluación.
+> **Propósito:** una única guía para estudiar y construir una PC2 de **un endpoint POST**, conservando el estilo real de Learning Center. **No es código listo para todos los enunciados**: usa los nombres, tipos y validaciones literales de tu PDF. Las reglas de la evaluación sobre generación automática de código prevalecen.
 
-## Empieza por aquí
+## 1. Leer el enunciado (ANTES de Rider)
 
-| Recurso | Para qué sirve |
-| --- | --- |
-| **[Guía PC2 paso a paso](docs/pc2-guia-paso-a-paso.md)** | Interpretación del enunciado, Rider, Shared, DDD, persistencia, REST, errores, MySQL, pruebas y commits |
-| **[Arquitectura completa de referencia](docs/pc2-arquitectura-referencia.md)** | Árbol de archivos y fragmentos adaptables por capas para un POST de Shipment |
-| **[Guía original extensa](docs/study-guide.md)** | Estudiar los patrones y conceptos presentes en la referencia |
-| **[ADR de referencia](docs/adrs.md)** | Decisiones arquitectónicas del proyecto original |
+Completa esta ficha en 2–5 minutos:
 
-**Importante sobre la guía original:** algunos apartados de `docs/study-guide.md` describen más funciones de las que están implementadas en esta copia. Comprueba los archivos reales antes de asumir que existen controladores, Docker Compose, servicios de IAM o endpoints concretos.
+| Identifica | Qué buscar | Ejemplos |
+| --- | --- | --- |
+| **Bounded Context** | “belongs to ... bounded context” | Paperwork / Order / Shipping |
+| **Aggregate Root** | “X is an aggregate root” | Covenant / PurchaseOrder / Shipment |
+| **Propiedades y tipos** | “NombrePropiedad (Tipo)” | ClientId (PartyId); DocumentIdentifier (CapbaseIdentifier) |
+| **Value Objects** | GUID, periodo, dinero; con invariantes | PartyId, LegalityPeriod, MonetaryAmount |
+| **Enum/default** | “Possible values…”, “default…” | Draft / Pending |
+| **Unicidad** | “Must not be duplicated” | DocumentIdentifier / OrderIdentifier |
+| **API** | verbo + URL + campos exactos del body | POST /api/v1/purchase-orders |
+| **Persistencia** | schema, tablas, PK, migraciones | clerky_wa / cuts_wa |
+| **Errores** | HTTP codes y mensajes localizados | 201 / 400 / 409 / 500; en / es |
 
-## ¿Qué hay realmente en este repositorio?
+**Regla de sintaxis:** \`ClientId (PartyId)\` → \`public PartyId ClientId { get; private set; }\`. **Tipo** entre paréntesis; **nombre de propiedad** antes. El \`Id (int)\` interno es distinto del GUID externo. El \`Id\` no se envía en el POST cuando es autogenerado.
 
-- `Acme.Center.Platform/Shared/`: núcleo reutilizable (`AggregateRoot`, `IEvent`, `IAuditableEntity`, `Result<T>`, `Error`, `IBaseRepository`, `IUnitOfWork`), persistencia EF Core, interceptores, rutas, localización y manejo de excepciones.
-- `Acme.Center.Platform/Profiles/`: un ejemplo rastreable de **Command → CommandService → Repository → Resource/Assembler → Controller**.
-- `Acme.Center.Platform/Publishing/`: ejemplos adicionales de entidades, Value Objects, consultas, comandos, eventos y validación de duplicados; su configuración EF está deshabilitada en `AppDbContext` de esta copia.
-- `Acme.Center.Platform/Iam/`: únicamente los archivos que existen realmente en esta versión; no presupongas un IAM funcional por aparecer en la guía teórica.
-- `Acme.Center.Platform/Migrations/`: migraciones del proyecto de referencia, **no** de tu futura práctica.
+| Caso | Contexto | Aggregate | Identifier | Relación | Periodo | POST |
+| --- | --- | --- | --- | --- | --- | --- |
+| Capbase | Paperwork | Covenant | CapbaseIdentifier | PartyId | LegalityPeriod | /api/v1/covenants |
+| CUTS | Order | PurchaseOrder | OrderIdentifier | SupplierId | DeliveryPeriod | /api/v1/purchase-orders |
+| Simulacro | Shipping | Shipment | ShipmentIdentifier | CarrierId | TransitPeriod | /api/v1/shipments |
 
-No mezcles automáticamente bounded contexts ni elimines identificadores con el mismo nombre que pertenecen a contextos distintos (por ejemplo, `Profiles.ProfileId` frente a `Publishing.ProfileId`).
+En los PDF pueden existir contradicciones (por ejemplo, \`purchaseorder\` frente a \`purchase-orders\` o la referencia a una fecha no definida). Identifícalas; no inventes propiedades sin justificarlas.
 
-## 1. Preparar Rider desde cero (para una PC nueva)
+## 2. Crear solución y compilar en Rider
 
-1. **Rider → New Solution → Web → Web API.** Elige `.NET 10`, `C#`, `UseControllers` activado, `UseMinimalAPIs` desactivado. Sin Docker, CORS ni IAM salvo que el enunciado los pida.
-2. Nombra **solución y proyecto exactamente como indique el PDF**. Ejemplo de simulacro: solución `pc212999u202422298`, proyecto `PC212999.U202422298.CargoPulse.Platform`.
-3. Abre la terminal en la carpeta donde está el `.csproj`:
+**New Solution → Web → Web API**; framework \`net10.0\`, C#, **UseControllers ✓**, **UseMinimalAPIs ✗**, sin Docker ni seguridad si no los pide la PC. Nombre de solución/proyecto **exactamente** como el PDF. Elimina los archivos de ejemplo WeatherForecast.
 
-```powershell
-dotnet --info
+Desde la carpeta que contiene el \`.csproj\`:
+
+~~~powershell
+dotnet --version
 dotnet restore
 dotnet build
-```
+~~~
 
-4. Borra los ejemplos `WeatherForecast.cs` y `WeatherForecastController.cs` si no pertenecen al caso.
-5. Reproduce **el patrón de carpetas** de la guía de arquitectura. Usa solo los bounded contexts que pida la práctica.
+Si \`dotnet add package\` dice “No se encuentra ningún proyecto”, entra en la carpeta del proyecto o pasa la ruta explícita del \`.csproj\`. Instala solo los NuGet necesarios; el \`Acme.Center.Platform.csproj\` muestra las versiones de referencia.
 
-## 2. Interpretar el enunciado antes de programar
+## 3. Estructura DDD que debes repetir
 
-Completa esta ficha en papel o en un borrador:
+~~~text
+Proyecto/
+├─ Shared/
+│  ├─ Application/Model/Result.cs
+│  ├─ Domain/Model/{Aggregates,Events,Entities,Errors,ValueObjects}/
+│  ├─ Domain/Repositories/
+│  └─ Infrastructure/Persistence/EntityFrameworkCore/
+├─ TU_CONTEXT/
+│  ├─ Domain/
+│  │  ├─ Model/{Aggregates,Commands,ValueObjects,Errors}/
+│  │  └─ Repositories/
+│  ├─ Application/{CommandServices,Internal/CommandServices}/
+│  ├─ Infrastructure/Persistence/EntityFrameworkCore/
+│  │  ├─ Configuration/Extensions/
+│  │  └─ Repositories/
+│  └─ Interfaces/Rest/
+│     ├─ Resources/
+│     ├─ Transform/
+│     └─ XsController.cs
+├─ Program.cs
+└─ appsettings.json
+~~~
 
-| Pregunta | Ejemplo ficticio |
+**No son cuatro proyectos separados:** el ejemplo del profesor tiene los bounded contexts y sus cuatro capas dentro de un mismo proyecto ASP.NET Core.
+
+## 4. Shared: qué copiar y qué adaptar
+
+**Conservar firmas/lógica** de estos archivos reales del profesor (dentro de \`Acme.Center.Platform/Shared\`):
+
+- \`Domain/Model/Aggregates/{IAggregateRoot.cs,Internal/AggregateRoot.cs}\`
+- \`Domain/Model/Events/IEvent.cs\` (**Cortex.Mediator**, no MediatR)
+- \`Domain/Model/Entities/IAuditableEntity.cs\` (\`CreatedAt\` y \`UpdatedAt\` son **DateTimeOffset?**)
+- \`Domain/Model/Errors/Error.cs\` y \`Application/Model/Result.cs\`
+- \`Domain/Repositories/{IBaseRepository.cs,IUnitOfWork.cs}\`
+- \`Infrastructure/Persistence/EntityFrameworkCore/Repositories/{BaseRepository.cs,UnitOfWork.cs}\`
+- \`Infrastructure/Persistence/EntityFrameworkCore/Interceptors/AuditableEntityInterceptor.cs\`
+
+**Adaptar:** namespaces y \`using\` (\`Acme.Center.Platform\` → raíz de tu PC), versiones de paquetes, \`AppDbContext\`, conexión MySQL, mapeos EF Core, localización y el exception handler. **No copies** sus migraciones de Profiles, ni sus vínculos de IAM, JWT, CORS o Publishing si no están en el examen.
+
+Las abstracciones \`AggregateRoot\` y \`IAuditableEntity\` **no crean automáticamente el \`int Id\` exigido por la PC**: agrégalo en tu aggregate. \`Result<T>\` soporta \`Success(value)\` y \`Failure(Error)\`; usa sus firmas reales, no inventes otro Result.
+
+## 5. Construir las capas, en este orden
+
+1. **Domain / ValueObjects:** los IDs externos (\`Guid Value\`), periodos (\`DateOnly StartDate\` / \`EndDate\`), monto (\`decimal Value\`, \`string Currency\`). Constructor con validaciones; métodos \`IsExpired\`, \`IsDelayed\`, \`Multiply\` si los exige el PDF. Coloca periodos y dinero en Shared **solo cuando el enunciado lo indique**.
+2. **Domain / Enum y Command:** \`XStatus\` con valores/default literales y \`CreateXCommand\` como \`record\` con los datos de entrada.
+3. **Domain / Aggregate:** \`X : AggregateRoot, IAuditableEntity\`; \`int Id\`, propiedades, constructor \`X(CreateXCommand command)\`, Value Objects y reglas. Auditoría exactamente \`DateTimeOffset?\`.
+4. **Domain / Repository interface:** \`IXRepository : IBaseRepository<X>\`; si debe ser único, define \`ExistsByIdentifierAsync(...)\`.
+5. **Application:** \`IXCommandService\` y \`XCommandService.Handle(command, cancellationToken)\`. Patrón real: consultar duplicado → \`new X(command)\` → \`repository.AddAsync(...)\` → \`unitOfWork.CompleteAsync(...)\` → \`Result<X>.Success(x)\`. Para duplicado, \`Result<X>.Failure(Error.Conflict("...","..."))\`.
+6. **Infrastructure:** \`XRepository : BaseRepository<X>, IXRepository\`; \`AppDbContext\` aplica \`ApplyXConfiguration()\`; Fluent API con \`HasKey\`, \`ValueGeneratedOnAdd\`, \`OwnsOne\` / \`HasConversion\`, columnas \`snake_case\`, tablas plurales e **índice único físico**. Crear nueva migración.
+7. **Interfaces:** \`CreateXResource\`, \`XResource\`, \`CreateXCommandFromResourceAssembler\`, \`XResourceFromEntityAssembler\`, \`XsController\`. POST: Resource → Command → Service → Result → Response. No pongas EF directamente en el Controller.
+8. **Program.cs:** registrar DbContext, repositories, command services, controladores, OpenAPI/Scalar y, si corresponde, i18n/ProblemDetails.
+
+**Referencias concretas en el repositorio:** \`Profiles/Application/Internal/CommandServices/ProfileCommandService.cs\` (Handle); \`Publishing/Application/Internal/CommandServices/TutorialCommandService.cs\` (duplicados); \`Profiles/Interfaces/Rest/ProfilesController.cs\` (POST); \`Profiles/Infrastructure/Persistence/EntityFrameworkCore/Configuration/Extensions/ModelBuilderExtensions.cs\` (Fluent API). Rutas relativas a \`Acme.Center.Platform/\`.
+
+### Convención de nombres
+
+Si el Aggregate es **Shipment**: \`CreateShipmentCommand\`, \`IShipmentRepository\`, \`ShipmentRepository\`, \`IShipmentCommandService\`, \`ShipmentCommandService\`, \`CreateShipmentResource\`, \`ShipmentResource\`, \`ShipmentsController\`.
+
+## 6. MySQL, API y errores
+
+Configura \`ConnectionStrings:DefaultConnection\` con credenciales **fuera de Git**. Genera las migraciones **para tu modelo**, no copies las de Learning Center:
+
+~~~powershell
+dotnet tool install --global dotnet-ef --version 10.0.14
+dotnet ef migrations add InitialExam --context AppDbContext
+dotnet ef database update --context AppDbContext
+dotnet run
+~~~
+
+Si \`dotnet-ef\` ya existe, verifica \`dotnet ef --version\`; el provider y el paquete Design deben ser compatibles. Valida el puerto real en \`launchSettings.json\` / terminal de Rider. En este proyecto de referencia, \`Program.cs\` ejecuta migraciones al iniciar y necesita MySQL disponible.
+
+| Caso probado | Resultado esperado |
 | --- | --- |
-| ¿Qué se registra? | Shipment |
-| ¿Qué dice el profesor que es aggregate root? | Shipment |
-| ¿A qué bounded context pertenece? | Shipping |
-| ¿Qué método y ruta pide? | POST `api/v1/shipments` |
-| ¿Qué atributos, tipos, obligatoriedad y defaults contiene? | GUID, periodo, dinero, estado, cantidad |
-| ¿Qué Value Objects y enums exige? | ShipmentIdentifier, CarrierId, TransitPeriod, MonetaryAmount, ShipmentStatus |
-| ¿Qué debe ser único? | ShipmentIdentifier |
-| ¿Cuál es el nombre de MySQL/schema? | cargopulse_wa |
-| ¿Qué devuelve el POST? | HTTP 201 y resource con Id generado |
-| ¿Qué errores y traducciones exige? | 400, 409, 500; inglés/español |
+| JSON válido | **201 Created**, Resource e ID generado |
+| Identificador repetido | **409 Conflict** |
+| Fecha, moneda o monto inválidos | **400 Bad Request** |
+| GUID o JSON malformados | **400 Bad Request** |
+| Error inesperado | **500** sin filtrar secretos |
+| Si se exige i18n | \`Accept-Language: es-PE / en-US\` y recursos \`.resx\` |
+| Comprobación MySQL | Fila persistida, índice único y fechas auditadas |
 
-La secuencia usual de creación es:
+**Ojo:** el \`GlobalExceptionHandler\` original manda muchas excepciones a **500**; adapta \`ArgumentException\` / \`ArgumentOutOfRangeException\` a **400**. \`CreatedAtAction\` requiere una ruta GET válida: si la PC pide **solo POST**, devuelve \`StatusCode(201, resource)\` y no inventes GET.
 
-```text
-HTTP JSON
- → CreateXResource → CreateXCommandFromResourceAssembler
- → CreateXCommand → XCommandService.Handle(...)
- → X (Aggregate Root + Value Objects) → IXRepository / XRepository
- → IUnitOfWork → AppDbContext / MySQL
- → XResourceFromEntityAssembler → HTTP 201
-```
+## 7. Máximo 10 commits y entrega
 
-## 3. Lo que puedes conservar de Shared
-
-**Reutiliza la lógica original**, revisando `using`, namespaces, dependencias y compatibilidad:
-
-- `Shared/Domain/Model/Aggregates/Internal/AggregateRoot.cs`
-- `Shared/Domain/Model/Aggregates/IAggregateRoot.cs`
-- `Shared/Domain/Model/Events/IEvent.cs` (requiere **Cortex.Mediator**, no MediatR)
-- `Shared/Domain/Model/Entities/IAuditableEntity.cs` (**DateTimeOffset?**, no DateTime)
-- `Shared/Domain/Model/Errors/Error.cs`
-- `Shared/Application/Model/Result.cs` (firmas reales `Success(T)`, `Failure(Error)`)
-- `Shared/Domain/Repositories/IBaseRepository.cs` y `IUnitOfWork.cs`
-
-Después adapta conscientemente `AppDbContext`, interceptores, `BaseRepository`, `UnitOfWork`, localización y ProblemDetails. **No copies toda la configuración original del proyecto como si fuera independiente del dominio.** Consulta [la guía detallada](docs/pc2-guia-paso-a-paso.md).
-
-## 4. Iniciar este repositorio de referencia en local
-
-```powershell
-git clone https://github.com/linolw/learning-center-platform-main.git
-cd learning-center-platform-main
-dotnet restore learning-center-platform.sln
-dotnet build learning-center-platform.sln
-```
-
-La aplicación de referencia requiere MySQL. Hay una conexión configurada en `appsettings*.json` y el programa ejecuta migraciones al iniciar, por lo que **un build exitoso no implica que `dotnet run` pueda conectarse a la base de datos**.
-
-**Nunca subas contraseñas reales.** Esta rama reemplaza las contraseñas literales por el marcador `%DATABASE_PASSWORD%`. Para ejecución local en PowerShell:
-
-```powershell
-$env:DATABASE_PASSWORD = "TU_CLAVE_LOCAL"
-dotnet run --project .\Acme.Center.Platform\Acme.Center.Platform.csproj
-```
-
-Configura además host, usuario y nombre de schema válidos en tu entorno. En una PC nueva utiliza **su propia base y sus propias migraciones**. Si una contraseña estuvo publicada en Git, cámbiala en la base de datos: modificar el archivo no limpia el historial remoto.
-
-## 5. Qué debes programar en una PC de solo POST
-
-1. **Domain:** Value Objects validados, enum, `CreateXCommand`, `X : AggregateRoot, IAuditableEntity`, errores e `IXRepository`.
-2. **Application:** `IXCommandService` y `XCommandService` (consultar duplicados, crear el aggregate, `AddAsync`, `CompleteAsync`, devolver `Result<X>`).
-3. **Infrastructure:** `AppDbContext`, mapeo Fluent API, índice único y repositorio EF Core.
-4. **Interfaces:** `CreateXResource`, `XResource`, assemblers, `XsController`, documentación OpenAPI.
-5. **Program:** registrar `DbContext`, repositorios, servicios, localización, ProblemDetails, controladores y documentación sin funcionalidades no exigidas.
-6. **Verificar:** POST válido 201; duplicado 409; fechas/montos/cantidad inválidos 400; recurso correcto; persistencia en MySQL; mensaje en/es si se solicita.
-
-**No uses `CreatedAtAction` apuntando a un GET inexistente:** para una práctica que exige exclusivamente POST, puedes devolver `StatusCode(201, resource)`.
-
-## 6. Distribución recomendada en un máximo de 10 commits
-
-| # | Alcance |
+| Commit | Contenido |
 | --- | --- |
-| 1 | Solution, `.csproj`, paquetes mínimos, estructura y Shared base |
-| 2 | Value Objects + enums del caso |
-| 3 | Command + Aggregate Root + reglas |
-| 4 | Repository interface + EF Core mappings |
-| 5 | `AppDbContext`, Repository EF + migración |
-| 6 | CommandService + unidad de trabajo |
-| 7 | Resources + Assemblers + Controller |
-| 8 | Errores, localización y ProblemDetails |
-| 9 | OpenAPI, XML comments y README |
-| 10 | Ajustes finales tras compilar y probar |
+| 1 | Proyecto + Shared |
+| 2 | Value Objects y Enum |
+| 3 | Command + Aggregate |
+| 4 | Repository contracts |
+| 5 | EF mapping + DbContext + migración |
+| 6 | Repository EF + CommandService |
+| 7 | Resources + Assemblers + POST Controller |
+| 8 | Errores 400/409 + i18n |
+| 9 | OpenAPI + comentarios XML + README |
+| 10 | Correcciones y pruebas finales |
 
-Realiza `dotnet build` entre etapas. Los commits representan avances verificables; no hagas diez commits vacíos para llenar la lista.
+Ejecuta \`dotnet build\` frecuentemente; al final ejecuta la API, prueba el POST y verifica datos en MySQL. Evita incluir \`bin/\`, \`obj/\`, \`.idea/\` o contraseñas en el ZIP de entrega.
 
-## 7. Referencias principales de código real
-
-- Servicio de comando: `Acme.Center.Platform/Profiles/Application/Internal/CommandServices/ProfileCommandService.cs`
-- POST Controller: `Acme.Center.Platform/Profiles/Interfaces/Rest/ProfilesController.cs`
-- Assembler: `Acme.Center.Platform/Profiles/Interfaces/Rest/Transform/CreateProfileCommandFromResourceAssembler.cs`
-- Mapeo de Value Objects: `Acme.Center.Platform/Profiles/Infrastructure/Persistence/EntityFrameworkCore/Configuration/Extensions/ModelBuilderExtensions.cs`
-- Validación de duplicados: `Acme.Center.Platform/Publishing/Application/Internal/CommandServices/TutorialCommandService.cs`
-- Arranque y DI: `Acme.Center.Platform/Program.cs`
-
-## 8. Estado de la adaptación y limitaciones
-
-Esta rama corrige archivos importados que no son código fuente, quita una implementación obsoleta duplicada de excepción, protege las configuraciones de contraseña y agrega documentación práctica. **La aplicación de ejemplo sigue siendo Learning Center**; los fragmentos de PC2 en `docs/` son plantillas didácticas, **no** una API nueva compilada y desplegada. Es obligatorio adaptar y verificar su código en cada enunciado.
+**Rider para acelerar:** \`Alt+Enter\` importa/corrige, \`Ctrl+Space\` completa, \`Shift+F6\` renombra, \`Ctrl+Alt+L\` formatea; \`Alt+Insert\` genera miembros según el contexto. Revisa qué herramientas de generación permite el profesor durante la evaluación.
 
 ---
 
-**Documentación y adaptación de estudio:** Leonardo Lino.  
-**Base técnica:** Learning Center Platform (material académico de referencia). Se preserva la atribución de la implementación original.
+**Guía de estudio y adaptación:** Leonardo Lino. **Código base y patrones:** Learning Center Platform del profesor.  
+**Límite importante:** este README es una guía de resolución, **no una afirmación de que cualquier enunciado compile solo por copiar Shared**.
