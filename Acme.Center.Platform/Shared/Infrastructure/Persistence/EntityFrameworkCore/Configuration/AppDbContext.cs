@@ -1,5 +1,6 @@
 
 using Acme.Center.Platform.Profiles.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
+using Acme.Center.Platform.Shipping.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Acme.Center.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Acme.Center.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Interceptors;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,9 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
 
         // Profiles Context
         builder.ApplyProfilesConfiguration();
+
+        // Shipping PC2 example
+        builder.ApplyShippingConfiguration();
 
         // IAM Context
     //    builder.ApplyIamConfiguration();

@@ -1,4 +1,10 @@
 using Acme.Center.Platform.Profiles.Application.CommandServices;
+using Acme.Center.Platform.Shipping.Application.CommandServices;
+using Acme.Center.Platform.Shipping.Application.Internal.CommandServices;
+using Acme.Center.Platform.Shipping.Domain.Repositories;
+using Acme.Center.Platform.Shipping.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Acme.Center.Platform.Shipping.Infrastructure.Pipeline.Middleware.Components;
+using System.Text.Json.Serialization;
 using Acme.Center.Platform.Profiles.Application.Internal.CommandServices;
 using Acme.Center.Platform.Profiles.Application.Internal.QueryServices;
 using Acme.Center.Platform.Profiles.Application.QueryServices;
@@ -31,10 +37,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddControllers(options => options.Conventions.Add(new KebabCaseRouteNamingConvention()))
-    .AddDataAnnotationsLocalization();
+    .AddDataAnnotationsLocalization()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Add ProblemDetails and ExceptionHandler services
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ShippingExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 
@@ -100,6 +108,10 @@ builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
 builder.Services.AddScoped<IProfileQueryService, ProfileQueryService>();
 builder.Services.AddScoped<IProfileCommandService, ProfileCommandService>();
 
+// Shipping PC2 example: create shipment
+builder.Services.AddScoped<IShipmentRepository, ShipmentRepository>();
+builder.Services.AddScoped<IShipmentCommandService, ShipmentCommandService>();
+
 
 // IAM Bounded Context Injection Configuration
 
@@ -131,7 +143,7 @@ using (var scope = app.Services.CreateScope())
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
 
-var supportedCultures = new[] { "en", "es" };
+var supportedCultures = new[] { "en", "en-US", "es", "es-PE" };
 var localizationOptions = new RequestLocalizationOptions()
     .SetDefaultCulture(supportedCultures[0])
     .AddSupportedCultures(supportedCultures)
