@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Shipping.DuplicateIdentifier" xml:space="preserve"><value>Ya existe un envío con este identificador.</value></data>
+  <data name="Shipping.InvalidPeriod" xml:space="preserve"><value>La fecha de entrega esperada debe ser posterior a la fecha de inicio.</value></data>
+  <data name="Shipping.InvalidCurrency" xml:space="preserve"><value>La moneda no puede estar vacía.</value></data>
+  <data name="Shipping.InvalidPackageCount" xml:space="preserve"><value>La cantidad de paquetes debe ser mayor que cero.</value></data>
+  <data name="Shipping.InvalidAmount" xml:space="preserve"><value>El costo del envío no puede ser negativo.</value></data>
+  <data name="Shipping.InvalidStatus" xml:space="preserve"><value>El estado del envío no es válido.</value></data>
+  <data name="Shipping.InvalidData" xml:space="preserve"><value>Los datos del envío son inválidos. Revise los identificadores y los valores de los campos.</value></data>
+</root>

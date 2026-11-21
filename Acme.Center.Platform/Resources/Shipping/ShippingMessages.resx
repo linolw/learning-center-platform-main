@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Shipping.DuplicateIdentifier" xml:space="preserve"><value>A shipment with this identifier already exists.</value></data>
+  <data name="Shipping.InvalidPeriod" xml:space="preserve"><value>Expected delivery date must be later than start date.</value></data>
+  <data name="Shipping.InvalidCurrency" xml:space="preserve"><value>Currency must not be empty.</value></data>
+  <data name="Shipping.InvalidPackageCount" xml:space="preserve"><value>Package count must be greater than zero.</value></data>
+  <data name="Shipping.InvalidAmount" xml:space="preserve"><value>Shipping cost cannot be negative.</value></data>
+  <data name="Shipping.InvalidStatus" xml:space="preserve"><value>Invalid shipment status.</value></data>
+  <data name="Shipping.InvalidData" xml:space="preserve"><value>Invalid shipment data. Check the identifiers and field values.</value></data>
+</root>
